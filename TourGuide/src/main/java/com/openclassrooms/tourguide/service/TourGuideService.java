@@ -90,7 +90,9 @@ public class TourGuideService {
 
 	public VisitedLocation trackUserLocation(User user) {
 		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
-		user.addToVisitedLocations(visitedLocation);
+		synchronized (user.getLock()) {
+			user.addToVisitedLocations(visitedLocation);
+		}
 		rewardsService.calculateRewards(user);
 		return visitedLocation;
 	}

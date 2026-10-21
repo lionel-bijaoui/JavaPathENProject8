@@ -16,6 +16,7 @@ public class User {
 	private Date latestLocationTimestamp;
 	private List<VisitedLocation> visitedLocations = new ArrayList<>();
 	private List<UserReward> userRewards = new ArrayList<>();
+	private final Object lock = new Object();
 	private UserPreferences userPreferences = new UserPreferences();
 	private List<Provider> tripDeals = new ArrayList<>();
 	public User(UUID userId, String userName, String phoneNumber, String emailAddress) {
@@ -70,13 +71,19 @@ public class User {
 	}
 	
 	public void addUserReward(UserReward userReward) {
-		if(userRewards.stream().filter(r -> !r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
-			userRewards.add(userReward);
+		synchronized (lock) {
+			if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction.attractionName)).count() == 0) {
+				userRewards.add(userReward);
+			}
 		}
 	}
 	
 	public List<UserReward> getUserRewards() {
 		return userRewards;
+	}
+
+	public Object getLock() {
+		return lock;
 	}
 	
 	public UserPreferences getUserPreferences() {
