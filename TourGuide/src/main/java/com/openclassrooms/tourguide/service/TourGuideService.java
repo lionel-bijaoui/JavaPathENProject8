@@ -1,5 +1,6 @@
 package com.openclassrooms.tourguide.service;
 
+import com.openclassrooms.tourguide.dto.NearbyAttractionDto;
 import com.openclassrooms.tourguide.helper.InternalTestHelper;
 import com.openclassrooms.tourguide.tracker.Tracker;
 import com.openclassrooms.tourguide.user.User;
@@ -7,7 +8,7 @@ import com.openclassrooms.tourguide.user.UserReward;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import gpsUtil.GpsUtil;
-import gpsUtil.location.Attraction;
 import gpsUtil.location.Location;
 import gpsUtil.location.VisitedLocation;
 
@@ -97,15 +97,20 @@ public class TourGuideService {
 		return visitedLocation;
 	}
 
-	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-		List<Attraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : gpsUtil.getAttractions()) {
-			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
-				nearbyAttractions.add(attraction);
-			}
-		}
-
-		return nearbyAttractions;
+	public List<NearbyAttractionDto> getNearByAttractions(User user, VisitedLocation visitedLocation) {
+		return gpsUtil.getAttractions().stream()
+			.sorted(Comparator.comparingDouble(
+				attraction -> rewardsService.getDistance(attraction, visitedLocation.location)
+			))
+			.limit(5)
+			.map(attraction -> new NearbyAttractionDto(
+				attraction.attractionName,
+				new Location(attraction.latitude, attraction.longitude),
+				visitedLocation.location,
+				rewardsService.getDistance(attraction, visitedLocation.location),
+				rewardsService.getRewardPoints(attraction, user)
+			))
+			.toList();
 	}
 
 	private void addShutDownHook() {
