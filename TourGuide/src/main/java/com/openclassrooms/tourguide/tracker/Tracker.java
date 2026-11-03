@@ -1,6 +1,8 @@
 package com.openclassrooms.tourguide.tracker;
 
+import gpsUtil.location.VisitedLocation;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +47,12 @@ public class Tracker extends Thread {
 			List<User> users = tourGuideService.getAllUsers();
 			logger.debug("Begin Tracker. Tracking " + users.size() + " users.");
 			stopWatch.start();
-			users.forEach(u -> tourGuideService.trackUserLocation(u));
+			List<CompletableFuture<VisitedLocation>> futures = users.stream().map(tourGuideService::trackUserLocation).toList();
+			try {
+				CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+            } catch (Exception e) {
+                logger.error("Tracker: Error occurred while tracking users", e);
+            }
 			stopWatch.stop();
 			logger.debug("Tracker Time Elapsed: " + TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime()) + " seconds.");
 			stopWatch.reset();

@@ -16,6 +16,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -36,12 +39,14 @@ public class TourGuideService {
 	private final GpsUtil gpsUtil;
 	private final RewardsService rewardsService;
 	private final TripPricer tripPricer = new TripPricer();
+	private final ExecutorService pool;
 	public final Tracker tracker;
 	boolean testMode = true;
 
 	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.gpsUtil = gpsUtil;
 		this.rewardsService = rewardsService;
+		this.pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 1);
 		
 		Locale.setDefault(Locale.US);
 
@@ -61,7 +66,7 @@ public class TourGuideService {
 
 	public VisitedLocation getUserLocation(User user) {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
-				: trackUserLocation(user);
+				: trackUserLocation(user).join();
 		return visitedLocation;
 	}
 
@@ -88,13 +93,15 @@ public class TourGuideService {
 		return providers;
 	}
 
-	public VisitedLocation trackUserLocation(User user) {
-		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
-		synchronized (user.getLock()) {
-			user.addToVisitedLocations(visitedLocation);
-		}
-		rewardsService.calculateRewards(user);
-		return visitedLocation;
+	public CompletableFuture<VisitedLocation> trackUserLocation(User user) {
+		return CompletableFuture.supplyAsync(() -> {
+			VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+			synchronized (user.getLock()) {
+				user.addToVisitedLocations(visitedLocation);
+			}
+			rewardsService.calculateRewards(user);
+			return visitedLocation;
+		}, pool);
 	}
 
 	public List<NearbyAttractionDto> getNearByAttractions(User user, VisitedLocation visitedLocation) {
@@ -114,11 +121,10 @@ public class TourGuideService {
 	}
 
 	private void addShutDownHook() {
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-			public void run() {
-				tracker.stopTracking();
-			}
-		});
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			tracker.stopTracking();
+			pool.shutdownNow();
+		}));
 	}
 
 	/**********************************************************************************
