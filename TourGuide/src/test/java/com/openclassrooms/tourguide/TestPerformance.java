@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import gpsUtil.GpsUtil;
@@ -46,6 +47,7 @@ public class TestPerformance {
 	 */
 
 	@Test
+	@Tag("slow-a")
 	public void highVolumeTrackLocation() {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
@@ -73,6 +75,7 @@ public class TestPerformance {
 	}
 
 	@Test
+	@Tag("slow-b")
 	public void highVolumeGetRewards() {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
