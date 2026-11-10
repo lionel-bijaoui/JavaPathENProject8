@@ -99,9 +99,9 @@ public class TourGuideService {
 			synchronized (user.getLock()) {
 				user.addToVisitedLocations(visitedLocation);
 			}
-			rewardsService.calculateRewards(user);
 			return visitedLocation;
-		}, pool);
+		}, pool).thenCompose(visitedLocation -> rewardsService.calculateRewards(user)
+			.thenApply(v -> visitedLocation));
 	}
 
 	public List<NearbyAttractionDto> getNearByAttractions(User user, VisitedLocation visitedLocation) {
